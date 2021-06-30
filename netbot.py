@@ -19,6 +19,16 @@ NB_TOKEN = os.environ['NETBOX_TOKEN']
 NB_ENDPOINT = "https://netbox-staging.robot.car"
 nb_api_endpoints = ['device','ipam','circuits','interface']
 
+def helper_readout():
+    return '''I understand the following commands currently:
+        @netbot get device <device_name>
+        @netbot get device <device_name> <sub-key> <sub-sub-key> <sub-sub-sub-key>
+        @netbot get list-devices-tag <tag_name>
+        @netbot get ipam ip_addresses <ip_address_expression>
+        @netbot get ipam vlans <site_name>
+        @netbot get ipam prefixes <site_name>
+    '''
+
 def parse_bot_commands(slack_events):
     """
         Parses a list of events coming from the Slack RTM API to find bot commands.
@@ -28,6 +38,10 @@ def parse_bot_commands(slack_events):
     for event in slack_events:
         if event["type"] == "message" and not "subtype" in event:
             user_id, message = parse_direct_mention(event["text"])
+            print("Recieved message:'{0}',type:'{1}'".format(message,type(message)))
+            if message == '':
+                message = " help"
+                print("Overwritten to '{}'".format(message))
             if user_id == starterbot_id:
                 return message, event["channel"]
     return None, None
@@ -51,7 +65,8 @@ def handle_command(command, channel):
         Executes bot command if the command is known
     """
     # Default response is help text for the user
-    default_response = "Not sure what you mean. Try *{}*.".format(EXAMPLE_COMMAND)
+    #default_response = "Not sure what you mean. Try *{}*.".format(EXAMPLE_COMMAND)
+    #default_response = helper_readout()
     nb = init_netbox()
     # Finds and executes the given command, filling in response
     response = None
@@ -97,14 +112,17 @@ def handle_command(command, channel):
                 response = [(x.address,x.description) for x in result]
             else:
                 response = "Sorry I couldn't find the attributes {} on ipam".format(section)
-        else:
-            response = "Sure...write some more code then I can do that!"
+    elif command.startswith(' help'):
+        #    response = "Sure...write some more code then I can do that!"
+        print(command)
+        response = "Hi I'm Netbot :robot_face: ! " + helper_readout()
 
     # Sends the response back to the channel
     slack_client.api_call(
         "chat.postMessage",
         channel=channel,
-        text=response or default_response
+        #text=response or default_response
+        text=response or helper_readout()
 )
 
 if __name__ == "__main__":
